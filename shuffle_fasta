@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+#
+# Author: Gearóid Fox
+# Copyright 2017 University College Dublin.
+
+
+"""
+ Randomly shuffle the order in which sequences appear in a multi-FASTA file
+ and print to stdout.
+"""
+
+import sys
+import argparse
+import random
+try: 
+    from Bio import SeqIO
+except ImportError:
+    sys.stderr.write("\nError: requires Biopython SeqIO module "
+                     "(http://biopython.org/)... exiting\n")
+    sys.exit(1)
+
+def main():
+    parser = argparse.ArgumentParser(description = "Rearrange sequences of a "
+                                     "FASTA file in a random order.",
+                                     epilog="")
+    parser.add_argument("infile", help="path to FASTA file to shuffle")
+    parser.add_argument("--seed", help="random seed", default=None, metavar='S')
+    args = parser.parse_args()
+    
+    try:
+        with open(args.infile, "rU") as infile:
+            input_records = list(SeqIO.parse(infile, "fasta"))
+    except IOError as e:
+        sys.stderr.write("Error reading input file\n%s\n" % e)
+        return 1
+
+    if args.seed:
+        random.seed(args.seed)
+    random.shuffle(input_records)
+
+    SeqIO.write(input_records, sys.stdout, "fasta")
+    return 0
+   
+if __name__=="__main__":
+    sys.exit(main())

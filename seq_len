@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+#
+# Author: Gearóid Fox
+# Copyright 2017 University College Dublin.
+
+"""
+Print average length of sequences in a FASTA file
+"""
+
+from __future__ import print_function
+import argparse
+import sys
+try: 
+    from Bio import SeqIO
+except ImportError:
+    sys.stderr.write("Error: requires Biopython SeqIO module "
+                     "(http://biopython.org/)... exiting\n")
+    sys.exit(-1)
+
+def main():
+    description = "Find average length of sequences in a multiFASTA file."
+    epilog = "Prints results to stdout."
+    parser = argparse.ArgumentParser(description=description, epilog=epilog)
+    parser.add_argument('infile',help="path to FASTA file")
+    args = parser.parse_args()
+    
+    with open(args.infile,'rU') as infile:
+        records = list(SeqIO.parse(infile, 'fasta'))
+    
+    total = len(records)
+    accumulate = 0 
+    for r in records:
+        accumulate += len(r.seq)
+
+    print(accumulate / float(total))
+    return 0
+   
+if __name__=="__main__":
+    sys.exit(main())

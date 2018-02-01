@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+#
+# Author: Gearóid Fox
+# Copyright 2017 University College Dublin.
+
+
+"""
+Calculate average percent identity of a multiple sequence alignment
+(FASTA format)
+
+Here percent identity is defined as the number of identical non-gap 
+characters shared by two sequences, divided by the unaligned length
+of the shorter sequence.
+
+Average percent identity is the mean of the percent identity of all 
+pairs of sequences in the aligment
+"""
+
+from __future__ import print_function, division
+import argparse
+import sys
+try:
+    import Bio.AlignIO
+    from Bio.Align import MultipleSeqAlignment
+    from Bio.Seq import Seq
+except ImportError as e:
+    sys.stderr.write("FATAL: BioPython is required")
+    sys.exit(1)
+
+def pair_identity(seqA, seqB):
+    """
+    Return pairwise identity of two aligned sequences
+    Matches / ungapped length of shorter sequence
+    
+    Args: 
+        seqA (Bio.Seq.Seq) a sequence
+        seqB (Bio.Seq.Seq) another sequence
+
+    seqA and seqB must be aligned i.e. same length with gaps
+    
+    Returns:
+        (float) percent identity of seqA and seqB
+    >>> pair_identity(Seq('HELLOWORLD'), Seq('...LOWORL-'))
+    100.0
+    >>> pair_identity(Seq('XYZ'), Seq('ABC'))
+    0.0
+    >>> pair_identity(Seq('HELLOWORLDD'), Seq('HALLOWOR.DE'))
+    80.0
+    """
+    lenA = len(seqA.ungap('.').ungap('-'))
+    lenB = len(seqB.ungap('.').ungap('-'))
+    length = min(lenA, lenB) # length of shorter seq (unaligned)
+    match = 0
+    for j in range(len(seqA)):
+        if seqA[j] == '-' or seqA[j] == '.' or seqB[j] == '-' or seqB[j] == '.':
+            continue
+        elif seqA[j] == seqB[j]:
+            match += 1
+    return 100 * (match / length)
+
+def main():
+    description = """Print average pairwise identity of a FASTA alignment"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('infile', help="Input file (aligned FASTA)")
+    args = parser.parse_args()
+
+    try:
+        with open(args.infile) as infile:
+            alignment = Bio.AlignIO.read(infile, 'fasta')
+    except IOError as e:
+        sys.stderr.write("FATAL: Can't open input file.\n%s\n" % e)
+        return 1
+
+    nseq = len(alignment)
+    count = 0
+    accum = 0
+    for i in range(nseq):
+        for j in range(i + 1, nseq):
+            accum += pair_identity(alignment[i].seq, alignment[j].seq)
+            count += 1
+    print(accum / count)
+    return 0
+
+if __name__=="__main__":
+    sys.exit(main())
+

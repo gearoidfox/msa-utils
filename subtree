@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+#
+# Author: Gearóid Fox
+# Copyright 2017 University College Dublin.
+
+"""
+Given an MSA guide tree in Newick format, and a set of sequences in FASTA
+format, find the minimal subtree which contains all of the given sequences.
+"""
+
+from __future__ import print_function
+import sys
+import argparse
+try:
+    from Bio import SeqIO
+except ImportError:
+    sys.stderr.write("FATAL: can't import BioPython (Bio) library.\n")
+    sys.exit(1)
+try:
+    from ete3 import Tree
+except ImportError:
+    sys.stderr.write("FATAL: can't import ete3 library.\n")
+    sys.exit(1)
+
+def main():
+    parser = argparse.ArgumentParser(description=
+            "Find minimal subtree containing a set of sequences.",
+            epilog = "Outputs the smallest subtree of the given tree"
+            " to contain all sequences in the given sequence file.")
+    parser.add_argument("tree", help="Newick format tree file.")
+    parser.add_argument("sequences", help="FASTA/a2m sequence file.")
+    parser.add_argument("outfile", help="Output filename (Newick tree).",
+            nargs="?", default=None)
+    parser.add_argument("-v", "--verbose", help="Print extra information.",
+            action="store_true")
+    args = parser.parse_args()
+
+    try:
+        tree = Tree(args.tree)
+    except Exception as e:
+        sys.stderr.write("FATAL: couldn't read input from %s.\n[%s]\n" % 
+                (args.tree, e))
+        return 1
+
+    try:
+        with open(args.sequences) as infile:
+            sequences = SeqIO.parse(infile, 'fasta')
+            sequences = list(sequences)
+    except IOError as e:
+        sys.stderr.write("FATAL: couldn't read input from %s.\n[%s]\n" % 
+                (args.sequences, e))
+        return 1
+
+    wanted_ids = [seq.id for seq in sequences]
+    
+    if args.verbose:
+        print("Read a tree with %s nodes from '%s'." % (len(tree), args.tree))
+        print("Read %s sequences from '%s'." % (len(sequences), args.sequences))
+
+    while True:
+        left_tree_ids = set(tree.children[0].get_leaf_names())
+        right_tree_ids = set(tree.children[1].get_leaf_names())
+        left_match = [x in left_tree_ids for x in wanted_ids]
+        right_match = [x in right_tree_ids for x in wanted_ids]
+        # if left_match is all true, go to the left tree
+        # if right_match is all true, go to the right tree
+        # if both contain trues, use current tree
+        # ensure we found the correct number of 'trues'
+        if sum(left_match) + sum(right_match) != len(wanted_ids):
+            sys.stderr.write("FATAL: incorrect/unexpected number of leaves"
+                    " matching sequence ids.\n")
+            return 1
+        elif all(left_match):
+            tree = tree.children[0]
+        elif all(right_match):
+            tree = tree.children[1]
+        elif sum(left_match) != 0 and sum(right_match) != 0:
+            break
+        else:
+            sys.stderr.write("FATAL: something went wrong.\n")
+            return 1
+    try: 
+        if args.outfile is None:
+            print(tree.write())
+        else:
+            tree.write(outfile=args.outfile)
+        if args.verbose:
+            print("Wrote a subtree with %s nodes to '%s'." % (len(tree), args.outfile))
+    except Exception as e:
+        sys.stderr.write("FATAL: couldn't write output to %s.\n[%s]\n" % (args.outfile, e))
+        return 1
+    return 0
+
+if __name__=="__main__":
+    sys.exit(main())

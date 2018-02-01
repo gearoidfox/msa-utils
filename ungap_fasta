@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+#
+# Author: Gearóid Fox
+# Copyright 2017 University College Dublin.
+
+"""
+Remove all gap characters from a FASTA file, i.e. turn a sequence alignment
+back into a set of unaligned sequences.
+"""
+
+from __future__ import print_function
+import argparse
+import sys
+import Bio.Alphabet
+import Bio.SeqIO
+
+def main():
+    description="""Remove gap characters ('-' '.') from a multi-FASTA file."""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('infile', help="input file (FASTA)", nargs="?",
+            default=None)
+    args = parser.parse_args()
+   
+    if args.infile is None:
+        source = sys.stdin
+        source_name = "stdin"
+    else:
+        try:
+            source = open(args.infile, "rU")
+            source_name = args.infile
+        except IOError as e:
+            sys.stderr.write("FATAL: can't open file [%s]\n%s\n" % 
+                    (args.infile, e))
+            
+    try:        
+        records = Bio.SeqIO.parse(source, 'fasta')
+        for r in records:
+            r.seq = r.seq.ungap('-')
+            r.seq = r.seq.ungap('.')
+            Bio.SeqIO.write(r, sys.stdout, 'fasta')
+    except IOError as e:
+        sys.stderr.write("FATAL: error reading sequences from [%s]\n%s\n" % 
+                (source_name, e))
+
+if __name__=="__main__":
+    sys.exit(main())

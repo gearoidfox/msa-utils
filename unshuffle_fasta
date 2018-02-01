@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+#
+# Author: Gearóid Fox
+# Copyright 2017 University College Dublin.
+
+"""
+Script to reorder the sequences in a FASTA file according to a reference
+ordering in a second FASTA file.
+
+Steps throught the sequences in the reference file and prints the corresponding
+sequences from the input file. Sequences are matched on the sequence id, i.e.
+everything between the '>' and the next whitespace character:
+
+>id description
+sequence
+>this|part|is|matched but not this part
+...the-sequence-data-is-not-matched-either...
+
+Can be used to extract a subset of sequences by supplying a reference file
+with only the desired subset of sequences.
+"""
+
+import argparse
+import sys
+try:
+    from Bio import SeqIO
+except ImportError:
+    sys.stderr.write("\nError: requires Biopython SeqIO module "
+            "(http://biopython.org/)... exiting\n")
+    sys.exit(1)
+
+def main():
+    help_text = """Reorder sequences in a FASTA file"""
+    parser = argparse.ArgumentParser(description=help_text)
+    parser.add_argument("infile", help="Input file (FASTA)")
+    parser.add_argument("reference", help="Reference sequence order (FASTA)")
+    args = parser.parse_args()
+
+    try:
+        with open(args.infile, "rU") as infile:
+            input_sequences = SeqIO.parse(infile, "fasta")
+            # Create a dictionary of Seq objects indexed by the sequence id
+            input_sequences = {seq.id: seq for seq in input_sequences}
+    except IOError as e:
+        sys.stderr.write("Error reading from [%s]\n%s\n" % (args.infile, e))   
+        return 1
+    try:
+        with open(args.reference, "rU") as reference:
+            for ref in SeqIO.parse(reference, "fasta"):
+                if ref.id in input_sequences:
+                    sys.stdout.write(input_sequences[ref.id].format("fasta"))
+    except IOError as e:
+        sys.stderr.write("Error writing to file [%s]\n%s\n" % (args.outfile, e));
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+
